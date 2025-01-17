@@ -1,2 +1,7 @@
-# hackapizza
-Repository creata per partecipare all'hackathon di DataPizza
+Crea environment
+Installa requirements
+Esegui con
+
+    streamlit run fe.py
+
+e conversa.

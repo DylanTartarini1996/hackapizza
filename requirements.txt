@@ -1,0 +1,10 @@
+faiss-cpu
+ibm-watsonx-ai
+langchain-core
+langchain-ibm
+langchain-ollama
+langchain-postgres
+ollama
+python-dotenv
+
+wikipedia
