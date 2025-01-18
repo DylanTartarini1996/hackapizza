@@ -1,11 +1,15 @@
 from enum import IntEnum
 import os
-from pydantic import BaseModel, Field
+from typing import Any, Self
+import json
+from pydantic import BaseModel, Field, field_validator
 from langchain_core.language_models import LLM
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
-
-
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
+from pprint import pprint as print
+def filter(x):
+    return x["out"]
 class OrderEnum(IntEnum):
     ANDROMEDA = 1
     NATURALISTI = 2
@@ -25,6 +29,16 @@ class PiattoLLMSchema(BaseModel):
     order: Order | None = Field(description="The 'Ordine' to which the recipe belongs to. Fill only if you are sure")
     name: str = Field(description="Name of the recipe")
 
+    @field_validator("name")
+    def validate(cls, value: Any) -> Self:
+        with open("../HackapizzaDataset/Misc/dish_mapping.json", "r") as f:
+            dishes = json.load(f)
+        valid_dishes = list(dishes.keys())
+        valid_dishes = [x.lower() for x in valid_dishes]
+        assert value.lower() in valid_dishes
+
+        return value
+
 class PiattoSchema(BaseModel):
     text: str = Field(description="Plain text of the recipe")
     llm_generated: PiattoLLMSchema = Field(default=None, description="Plain text of the recipe")
@@ -38,7 +52,7 @@ class PiattoSchema(BaseModel):
         
         **INPUT**: A document
         
-        **OUTPUT**: avoid the introductory and enclosing comments, return only JSON. The output must respect the following JSON format: 
+        **OUTPUT**: avoid the introductory and enclosing comments, return only a JSON. The output must respect the following JSON format: 
         {format_instructions}
         
         Document:{document} 
@@ -53,7 +67,8 @@ class PiattoSchema(BaseModel):
 
 
     def fill_llm_generated(self, llm: LLM):
-        chain =  self.prompt | llm.with_structured_output(PiattoLLMSchema)
+        parser = PydanticOutputParser(pydantic_object=PiattoLLMSchema)
+        chain =  self.prompt | RunnableParallel({"out":llm, "log": RunnableLambda(print)}) | RunnableLambda(filter) | parser
         out = chain.invoke({"document": self.text})
         self.llm_generated = out
 
@@ -61,11 +76,11 @@ class RistoranteLLMSchema(BaseModel):
     name: str = Field(description="Name of the restaurants")
     chef: str = Field(description="Name of the chef")
     location: str = Field(description="Location of the restaurant")
-    piatti: list[PiattoSchema] = Field(description="List of recipes")
 
 class RistoranteSchema(BaseModel):
     text: str = Field(description="Plain text of the restaurant description")
     llm_generated: RistoranteLLMSchema = None
+    piatti: list[PiattoSchema] | None = Field(default=None, description="List of recipes")
 
     @property
     def prompt(self) -> ChatPromptTemplate:
@@ -90,7 +105,8 @@ class RistoranteSchema(BaseModel):
         return prompt
 
     def fill_llm_generated(self, llm: LLM):
-        chain = self.prompt | llm.with_structured_output(RistoranteLLMSchema)
+        parser = PydanticOutputParser(pydantic_object=RistoranteLLMSchema)
+        chain = self.prompt | RunnableParallel({"out":llm, "log": RunnableLambda(print)}) | RunnableLambda(filter) | parser
         out = chain.invoke({"document": self.text})
         self.llm_generated = out
 
