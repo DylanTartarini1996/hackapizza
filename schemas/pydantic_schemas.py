@@ -6,6 +6,8 @@ from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 
 
+from typing import List, Optional
+
 class OrderEnum(IntEnum):
     ANDROMEDA = 1
     NATURALISTI = 2
@@ -17,6 +19,33 @@ class Order(BaseModel):
     description: str
     category: OrderEnum
     emoji: str
+
+
+# class TechniqueSchema(BaseModel):
+#     macrocategory: str
+#     subcategory: str
+#     name: str
+#     how_it_works: str
+#     positives: str
+#     negatives: str
+#     required_licenses: list["LicenseSchema"] | None = Relationship("LicenseSchema", back_populates="techniqueschema")
+class TechniqueSubCategory(BaseModel):
+    name: str
+    how_it_works: str
+    pros: str
+    cons: str
+
+
+class Technique(BaseModel):
+    category: str
+    description: str
+    sub_categories: Optional[List[TechniqueSubCategory]] = None
+
+
+class MacroTechnique(BaseModel):
+    name: str
+    description: str
+    techniques: Optional[List[Technique]] = None
 
 
 class PiattoLLMSchema(BaseModel):
