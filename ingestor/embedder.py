@@ -5,8 +5,8 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain_ollama.embeddings import OllamaEmbeddings
 from langchain_openai.embeddings import OpenAIEmbeddings
 
-from src.config import EmbedderConf
-from src.schema import ProcessedDocument
+from ingestor.config import EmbedderConf
+from ingestor.chunk import Chunk
 
 logger = getLogger(__name__)
 
@@ -45,28 +45,10 @@ class ChunkEmbedder:
         return embeddings
     
 
-    def embed_document_chunks(self, doc: ProcessedDocument) -> ProcessedDocument:
-        """
-        Embeds the chunks of a `ProcessedDocument` instance.
-        """
+    def embed_chunks(self, chunks: List[Chunk]) -> List[Chunk]:
         if self.embeddings is not None:
-            for chunk in doc.chunks:
+            for chunk in chunks:
                 chunk.embedding = self.embeddings.embed_documents([chunk.text])
                 chunk.embeddings_model = self.conf.model
-            logger.info(f"Embedded {len(doc.chunks)} chunks.")
-            return doc
-        else: 
-            logger.warning(f"Embedder type '{self.conf.type}' is not yet implemented")
-
-
-    def embed_documents_chunks(self, docs: List[ProcessedDocument]) -> List[ProcessedDocument]:
-        """
-        Embeds the chunks of a list of `ProcessedDocument` instances.
-        """
-        if self.embeddings is not None:
-            for doc in docs:
-                doc = self.embed_document_chunks(doc)
-            return docs
-        else: 
-            logger.warning(f"Embedder type '{self.conf.type}' is not yet implemented")
-            return docs
+            logger.info(f"Embedded {len(chunks)} chunks.")
+        return chunks

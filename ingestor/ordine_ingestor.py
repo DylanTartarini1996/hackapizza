@@ -1,14 +1,20 @@
+import os
 from pprint import pprint
-
+from typing import List
+import uuid
 import unicodedata
 
 from ingestor.base import BaseIngestor
 import re
 import fitz
+from ingestor.chunk import Chunk
 from ingestor.ingestion.cleaner import Cleaner
 
 from schemas.pydantic_schemas import OrderEnum, Order
 
+def uuid_from_filename(filename, chunk_id: int):
+    namespace = uuid.NAMESPACE_URL
+    return str(uuid.uuid5(namespace, filename+"chunk_"+str(chunk_id)))
 
 class OrderIngestor(BaseIngestor):
     def __init__(self):
@@ -84,7 +90,7 @@ class OrderIngestor(BaseIngestor):
 
         return order
 
-    def run(self, pdf_path):
+    def run(self, pdf_path) -> List[Order]:
         pattern = r'(?=<h1>.*?</h1>)'
 
         html_output = self.extract_text_by_font_size(pdf_path)
@@ -106,8 +112,41 @@ class OrderIngestor(BaseIngestor):
             if chunk.startswith("<h3"):
                 orders.append(self.parse_order_chunk(chunk))
         return orders
+    
 
+    def chunks_from_doc(self, pdf_path: str) -> List[Chunk]:
+        pattern = r'(?=<h1>.*?</h1>)'
 
+        html_output = self.extract_text_by_font_size(pdf_path)
+        html_content = "\n".join(html_output)
+
+        chunks = re.split(pattern, html_content)
+        chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
+
+        capitolo_2 = chunks[2]
+
+        pattern = r'(?=<h3>.*?</h3>)'
+        capitolo_2_chunks = re.split(pattern, capitolo_2)
+
+        capitolo_2_clean_chunks = [self.cleaner._clean_text(chunk.strip()) for chunk in capitolo_2_chunks]
+        capitolo_2_clean_chunks = [self.clean_corrupted_text(chunk) for chunk in capitolo_2_clean_chunks]
+
+        final_chunks = []
+
+        for i, text in enumerate(capitolo_2_clean_chunks):
+            base_file_name = os.path.basename(pdf_path)
+
+            fin_chunk = Chunk(
+                id=uuid_from_filename(base_file_name, i),
+                filename=base_file_name,
+                text=text,
+                embedding=None,
+                embeddings_model=None
+            )
+
+            final_chunks.append(fin_chunk)
+
+        return final_chunks 
 
 if __name__=="__main__":
     ingestor = OrderIngestor()

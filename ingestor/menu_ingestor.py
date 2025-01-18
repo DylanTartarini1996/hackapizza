@@ -1,14 +1,21 @@
+from typing import List
 from ingestor.base import BaseIngestor
 import os
 from os.path import isfile, join
 import re
 import fitz
-import pickle
 import json
+import uuid
 from pprint import pprint
+from ingestor.chunk import Chunk
 from ingestor.ingestion.cleaner import Cleaner
 
 from schemas.pydantic_schemas import RistoranteSchema, PiattoSchema
+
+def uuid_from_filename(filename, chunk_id: int):
+    namespace = uuid.NAMESPACE_URL
+    return str(uuid.uuid5(namespace, filename+"chunk_"+str(chunk_id)))
+
 
 class MenuIngestor(BaseIngestor):
     def __init__(self, llm):
@@ -80,6 +87,34 @@ class MenuIngestor(BaseIngestor):
                     json.dump(json.loads(ristorante_schema.model_dump_json(exclude=["text"], indent=2)), f, indent=2)
             break
         return restaurants
+    
+
+    def chunks_from_docs(self, base_dir: str) -> List[Chunk]:
+        final_chunks = []
+        for filename in os.listdir(base_dir):
+            if filename.endswith(".pdf"):
+                pattern = r'(?=<h1>.*?</h1>)'
+
+                html_output = self.extract_text_by_font_size(os.path.join(base_dir,filename), 12)
+
+                html_content = "\n".join(html_output)
+
+                chunks = re.split(pattern, html_content)
+
+                chunks = [self.cleaner._clean_text(chunk.strip()) for chunk in chunks if chunk.strip()]
+                
+
+                for i, text in enumerate(chunks):
+                    fin_chunk = Chunk(
+                        id=uuid_from_filename(filename, i),
+                        filename=filename,
+                        text=text
+                    )
+                    final_chunks.append(fin_chunk)
+                
+        return final_chunks
+
+    
 
 if __name__=="__main__":
     from llms.watson import llm

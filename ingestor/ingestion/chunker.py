@@ -3,7 +3,7 @@ from typing import List
 from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
 from logging import getLogger
 
-from src.config import ChunkerConf
+from ingestor.config import ChunkerConf
 from src.schema import ProcessedDocument, Chunk
 
 logger = getLogger(__name__)

@@ -1,4 +1,4 @@
-from enum import IntEnum, Enum
+from enum import IntEnum, StrEnum
 import os
 from typing import Any, Self
 import json
@@ -23,7 +23,7 @@ class OrderEnum(IntEnum):
     UNKNOWN=0
 
 
-class LocationEnums(Enum, str):
+class LocationEnums(StrEnum):
     TATOOINE = "Tatooine"
     ASGARD = "Asgard"
     NAMECC = "Namecc"
