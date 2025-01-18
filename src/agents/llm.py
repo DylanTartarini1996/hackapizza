@@ -1,4 +1,5 @@
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_ibm import WatsonxLLM
 from langchain_ollama.chat_models import ChatOllama
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_community.chat_models.huggingface import ChatHuggingFace
@@ -32,6 +33,13 @@ def fetch_llm(conf: LLMConf) -> BaseChatModel | None:
             model=conf.model,
             endpoint=conf.endpoint,
             temperature=conf.temperature,
+        )
+    elif conf.type == "ibm":
+        llm = WatsonxLLM(
+            model_id=conf.model,
+            url=conf.endpoint, 
+            apikey=conf.api_key,
+            project_id=conf.deployment
         )
 
     else:

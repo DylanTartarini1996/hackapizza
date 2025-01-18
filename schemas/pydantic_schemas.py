@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
 import os
 from pydantic import BaseModel, Field
 from langchain_core.language_models import LLM
@@ -14,6 +14,20 @@ class OrderEnum(IntEnum):
     ARMONISTI = 3
     UNKNOWN=0
 
+
+class LocationEnums(Enum, str):
+    TATOOINE = "Tatooine"
+    ASGARD = "Asgard"
+    NAMECC = "Namecc"
+    ARRAKIS = "Arrakis"
+    KRYPTON = "Krypton"
+    PANDORA = "Pandora"
+    CYBERTRON = "Cybertron"
+    EGO = "Ego"
+    MONTRESSOSR = "Montressosr"
+    KLYNTAR = "Klyntar"
+
+
 class Order(BaseModel):
     name: str = Field(description="'Ordine' name, one of 'Ordine della Galassia di Andromeda', 'Ordine dei Naturalisti', 'Ordine degli Armonisti', 'UNKNOWN'. Set to UNKNOWN when not sure.")
     description: str
@@ -21,14 +35,6 @@ class Order(BaseModel):
     emoji: str
 
 
-# class TechniqueSchema(BaseModel):
-#     macrocategory: str
-#     subcategory: str
-#     name: str
-#     how_it_works: str
-#     positives: str
-#     negatives: str
-#     required_licenses: list["LicenseSchema"] | None = Relationship("LicenseSchema", back_populates="techniqueschema")
 class TechniqueSubCategory(BaseModel):
     name: str
     how_it_works: str
@@ -89,7 +95,7 @@ class PiattoSchema(BaseModel):
 class RistoranteLLMSchema(BaseModel):
     name: str = Field(description="Name of the restaurants")
     chef: str = Field(description="Name of the chef")
-    location: str = Field(description="Location of the restaurant")
+    location: LocationEnums = Field(description="Location of the restaurant")
     piatti: list[PiattoSchema] = Field(description="List of recipes")
 
 class RistoranteSchema(BaseModel):
