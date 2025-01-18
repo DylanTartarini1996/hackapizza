@@ -4,6 +4,7 @@ langchain-core
 langchain-ibm
 langchain-ollama
 langchain-postgres
+langchain-community
 ollama
 python-dotenv
 

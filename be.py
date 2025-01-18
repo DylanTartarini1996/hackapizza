@@ -72,4 +72,4 @@ def run(human_message:str):
     out = conv_chain.invoke(human_message, {"configurable": {"session_id": "12345678"}})
     return out
 
-#print(run("Chi sei"))
+print(run("Chi sei"))
