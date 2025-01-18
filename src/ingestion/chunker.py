@@ -28,13 +28,30 @@ class Chunker:
                 is_separator_regex=False
             )
         
+        elif self.chunker_type == "menu":
+            self.splitter = RecursiveCharacterTextSplitter(
+                chunk_size=self.chunk_size, 
+                chunk_overlap=self.chunk_overlap, 
+                separators=[
+                    "<h1>Menu</h1>", 
+                    "<h1>Legenda Ordini Professionali Gastronomici</h1>",
+                    
+                ]
+            )
+        
         else: 
             logger.warning(f"Chunker type '{self.chunker_type}' not supported.")
 
 
     def _chunk_document(self, text: str) -> list[str]:
         """Chunks the document and returns a list of chunks."""
+        if self.chunker_type == "menu":
+            return self.split_menus(text)
+
         return self.splitter.split_text(text)
+
+
+    def 
 
 
     def get_chunked_document_with_ids(
