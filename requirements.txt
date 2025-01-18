@@ -10,5 +10,6 @@ langchain-community
 ollama
 python-dotenv
 pdfplumber>=0.11.4
+pymupdf
 python-magic>=0.4.27
 streamlit>=1.40.0

@@ -51,6 +51,8 @@ class Cleaner:
         text = re.sub(r'[ \t]+', ' ', text)
         # Removes leading and trailing whitespace from the text.
         text = re.sub(r'^\s+|\s+$', ' ', text)
+        text = re.sub(r'<p>', "", text)
+        text = re.sub(r'</p>', "", text)
 
         return text.strip()
 
