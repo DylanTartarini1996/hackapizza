@@ -1,3 +1,5 @@
+import json
+
 from langchain_ibm import WatsonxLLM
 from langchain_core.output_parsers import StrOutputParser
 from ibm_watsonx_ai.foundation_models import ModelInference
@@ -13,6 +15,8 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.prompts import MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
+from pydantic import BaseModel, root_validator, Field
+
 
 load_dotenv('template.env')
 
@@ -25,12 +29,28 @@ parameters = {
     "top_p": 1,
 }
 
+class WatsonLLMConfig(BaseModel):
+    decoding_method: str
+    max_new_tokens: int
+    min_new_tokens: int
+    temperature: float
+    top_k: int
+    top_p: int
+
+    @root_validator(pre=True)
+    def validate(cls, values):
+
+        assert values["top_k"] > 0 and values["top_p"] > 0
+        return values
+
+conf = WatsonLLMConfig(**parameters)
+
 try:
     llm = WatsonxLLM(
         model_id="ibm/granite-13b-instruct-v2",
         url="https://us-south.ml.cloud.ibm.com",
         project_id="PASTE YOUR PROJECT_ID HERE",
-        params=parameters,
+        params=conf.model_dump(),
     )
 except WMLClientError:
     print("IBM Token missing, importing OLLAMA as fallback")
@@ -39,16 +59,25 @@ except WMLClientError:
         model="llama3.1",
         temperature=0
     )
-    
+
+class OutputLLM(BaseModel):
+    response: str = Field(description="Textual response")
+    reasoning: str = Field(description="Your reasoning")
+
+
+from langchain_core.output_parsers import PydanticOutputParser
+
 system_prompt_template = """
 test
 {context}
-""" 
 
+"""
 human_prompt_template = """
 Question: {question}.
 Answer:
 """
+# parser = PydanticOutputParser(pydantic_object=OutputLLM)
+# human_prompt_template += parser.get_format_instructions()
 
 def filter(x):
     return x["out"]
@@ -57,7 +86,7 @@ chat_history_for_chain = ChatMessageHistory()
 
 retriever_chain = {"context": retriever, "question": RunnablePassthrough()}
 main_chain = ChatPromptTemplate.from_messages([("system", system_prompt_template), MessagesPlaceholder("chat_history"),("human", human_prompt_template)]) | \
-    RunnableParallel({"out":llm, "log": RunnableLambda(print)}) | RunnableLambda(filter) | StrOutputParser()
+    RunnableParallel({"out":llm, "log": RunnableLambda(print)}) | RunnableLambda(filter) |  StrOutputParser()
 
 chain_with_message_history = RunnableWithMessageHistory(
     main_chain,
