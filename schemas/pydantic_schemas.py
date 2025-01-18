@@ -1,4 +1,4 @@
-from enum import IntEnum, Enum
+from enum import IntEnum, Enum, StrEnum
 import os
 from typing import Any, Self
 import json
@@ -7,6 +7,7 @@ from langchain_core.language_models import LLM
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
+from langchain_core.runnables.retry import RunnableRetry
 from pprint import pprint as print
 from typing import List, Optional
 
@@ -16,14 +17,14 @@ def filter(x):
 
 
 
-class OrderEnum(IntEnum):
-    ANDROMEDA = 1
-    NATURALISTI = 2
-    ARMONISTI = 3
-    UNKNOWN=0
+class OrderEnum(StrEnum):
+    ANDROMEDA = "Ordine della Galassia di Andromeda"
+    NATURALISTI = "Ordine dei Naturalisti"
+    ARMONISTI = "Ordine degli Armonisti"
+    UNKNOWN="Unknown"
 
 
-class LocationEnums(Enum, str):
+class LocationEnums(StrEnum):
     TATOOINE = "Tatooine"
     ASGARD = "Asgard"
     NAMECC = "Namecc"
@@ -36,11 +37,13 @@ class LocationEnums(Enum, str):
     KLYNTAR = "Klyntar"
 
 
+
+
 class Order(BaseModel):
-    name: str = Field(description="'Ordine' name, one of 'Ordine della Galassia di Andromeda', 'Ordine dei Naturalisti', 'Ordine degli Armonisti', 'UNKNOWN'. Set to UNKNOWN when not sure.")
-    description: str
+    #name: str = Field(description="'Ordine' name, one of 'Ordine della Galassia di Andromeda', 'Ordine dei Naturalisti', 'Ordine degli Armonisti', 'UNKNOWN'. Set to UNKNOWN when not sure.")
+    #description: str
     category: OrderEnum
-    emoji: str
+    #emoji: str
 
 
 class TechniqueSubCategory(BaseModel):
@@ -65,7 +68,7 @@ class MacroTechnique(BaseModel):
 class PiattoLLMSchema(BaseModel):
     ingredients: list[str] = Field(description="Ingredients mentioned in the recipe")
     techniques: list[str] = Field(description="'Tecniche' mentioned in the recipe")
-    order: Order | None = Field(description="The 'Ordine' to which the recipe belongs to. Fill only if you are sure")
+    #order: OrderEnum = Field(description="The 'Ordine' which apprec. Fill this field only if you are sure")
     name: str = Field(description="Name of the recipe")
 
     @field_validator("name")
@@ -107,7 +110,7 @@ class PiattoSchema(BaseModel):
 
     def fill_llm_generated(self, llm: LLM):
         parser = PydanticOutputParser(pydantic_object=PiattoLLMSchema)
-        chain =  self.prompt | RunnableParallel({"out":llm, "log": RunnableLambda(print)}) | RunnableLambda(filter) | parser
+        chain =  self.prompt | RunnableRetry(bound=RunnableParallel({"out":llm, "log": RunnableLambda(print)}), max_attempt_number=2) | RunnableLambda(filter) | parser
         out = chain.invoke({"document": self.text})
         self.llm_generated = out
 
@@ -115,12 +118,12 @@ class RistoranteLLMSchema(BaseModel):
     name: str = Field(description="Name of the restaurants")
     chef: str = Field(description="Name of the chef")
     location: LocationEnums = Field(description="Location of the restaurant")
-    piatti: list[PiattoSchema] = Field(description="List of recipes")
+    #piatti: list[PiattoSchema] = Field(description="List of recipes")
 
 class RistoranteSchema(BaseModel):
     text: str = Field(description="Plain text of the restaurant description")
     llm_generated: RistoranteLLMSchema = None
-    piatti: list[PiattoSchema] | None = Field(default=None, description="List of recipes")
+    #piatti: list[PiattoSchema] | None = Field(default=None, description="List of recipes")
 
     @property
     def prompt(self) -> ChatPromptTemplate:
