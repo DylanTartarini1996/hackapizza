@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
 import os
 from typing import Any, Self
 import json
@@ -8,19 +8,58 @@ from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
 from pprint import pprint as print
+from typing import List, Optional
+
 def filter(x):
     return x["out"]
+
+
+
+
 class OrderEnum(IntEnum):
     ANDROMEDA = 1
     NATURALISTI = 2
     ARMONISTI = 3
     UNKNOWN=0
 
+
+class LocationEnums(Enum, str):
+    TATOOINE = "Tatooine"
+    ASGARD = "Asgard"
+    NAMECC = "Namecc"
+    ARRAKIS = "Arrakis"
+    KRYPTON = "Krypton"
+    PANDORA = "Pandora"
+    CYBERTRON = "Cybertron"
+    EGO = "Ego"
+    MONTRESSOSR = "Montressosr"
+    KLYNTAR = "Klyntar"
+
+
 class Order(BaseModel):
     name: str = Field(description="'Ordine' name, one of 'Ordine della Galassia di Andromeda', 'Ordine dei Naturalisti', 'Ordine degli Armonisti', 'UNKNOWN'. Set to UNKNOWN when not sure.")
     description: str
     category: OrderEnum
     emoji: str
+
+
+class TechniqueSubCategory(BaseModel):
+    name: str
+    how_it_works: str
+    pros: str
+    cons: str
+
+
+class Technique(BaseModel):
+    category: str
+    description: str
+    sub_categories: Optional[List[TechniqueSubCategory]] = None
+
+
+class MacroTechnique(BaseModel):
+    name: str
+    description: str
+    techniques: Optional[List[Technique]] = None
 
 
 class PiattoLLMSchema(BaseModel):
@@ -75,7 +114,8 @@ class PiattoSchema(BaseModel):
 class RistoranteLLMSchema(BaseModel):
     name: str = Field(description="Name of the restaurants")
     chef: str = Field(description="Name of the chef")
-    location: str = Field(description="Location of the restaurant")
+    location: LocationEnums = Field(description="Location of the restaurant")
+    piatti: list[PiattoSchema] = Field(description="List of recipes")
 
 class RistoranteSchema(BaseModel):
     text: str = Field(description="Plain text of the restaurant description")
