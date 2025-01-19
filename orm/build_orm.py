@@ -25,14 +25,15 @@ class Restaurant(Base):
     name: Mapped[str] = mapped_column(String(30))
     chef: Mapped[str] = mapped_column(String(30))
     location: Mapped[str] = mapped_column(String(30))
-    #licenses: Mapped[List["Licenses"]] = relationship()
+    licenses: Mapped[List["License"]|None] = relationship()
     dishes: Mapped[List["Dishes"]] = relationship()
 
-# class Licenses(Base):
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     name: Mapped[str] = mapped_column(String(30))
-#     description: Mapped[str] = mapped_column(String(30))
-#     restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurant.id"))
+class License(Base):
+    __tablename__ = "license"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(30))
+    level: Mapped[int] = mapped_column(Integer)
+    restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurant.id"))
 
 class Ingredient(Base):
     __tablename__ = "ingredient"
@@ -52,7 +53,7 @@ class LocationDistances(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     _from: Mapped[str] = mapped_column(ForeignKey("restaurant.location"))
     _to: Mapped[str] = mapped_column(ForeignKey("restaurant.location"))
-    distance: Mapped[int] = Column(Integer)
+    distance: Mapped[int] = mapped_column(Integer)
 
 from sqlalchemy import create_engine
 engine = create_engine("sqlite:///../data_sql.db", echo=True)
@@ -64,6 +65,18 @@ from sqlalchemy.orm import Session
 
 restaurant_json_dir = '../HackapizzaDataset/Menu/output/restaurants'
 dishes_json_dir = '../HackapizzaDataset/Menu/output/dishes'
+license_level_mapping = {
+    'I': 1,
+    'II': 2,
+    'III': 3,
+    'IV': 4,
+    'V': 5,
+    'VI': 6,
+    'VII': 7,
+    'UNKNOWN': -1
+}
+with open('../notebooks/restaurant_licence_classification.json', 'r') as f:
+    restaurant_licenses = json.load(f)
 
 with Session(engine) as session:
     restaurants_to_process = os.listdir(restaurant_json_dir)
@@ -81,6 +94,7 @@ with Session(engine) as session:
                 restaurant_objs.append(Restaurant(name=restaurant_data["name"],
                                                   chef=restaurant_data["chef"],
                                                   location=restaurant_data["location"],
+                                                  licenses=[License(name=x["licence_type"], level=license_level_mapping.get(x["licence_level"], x["licence_level"])) for x in restaurant_licenses[0].get(restaurant_data["name"], [])],
                                                   dishes=[Dishes(name=x["name"],
                                                                  ingredients=[Ingredient(name=ing) for ing in x["ingredients"]],
                                                                  techniques=[Technique(name=tec) for tec in x["techniques"]]) for x in dishes_data if x is not None]))

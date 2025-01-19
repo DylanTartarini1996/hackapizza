@@ -47,12 +47,12 @@ class MenuIngestor(BaseIngestor):
 
     def run(self, base_dir):
         restaurants = []
-        restuarants_dst_dir = os.path.join(base_dir, 'output', 'restaurants')
-        dishes_dst_dir = os.path.join(base_dir, 'output', 'dishes')
-        errors_file = os.path.join(base_dir, 'output', 'errors.txt')
+        restuarants_dst_dir = os.path.join(base_dir, 'output2', 'restaurants')
+        dishes_dst_dir = os.path.join(base_dir, 'output2', 'dishes')
+        errors_file = os.path.join(base_dir, 'output2', 'errors.txt')
         os.makedirs(restuarants_dst_dir, exist_ok=True)
         os.makedirs(dishes_dst_dir, exist_ok=True)
-        c
+        files_to_process = os.listdir(base_dir)
         print(f"{len(files_to_process)} files to process")
         for filename in files_to_process:
             restaurant_out_file = os.path.join(restuarants_dst_dir, filename.replace('.pdf', '.json'))
