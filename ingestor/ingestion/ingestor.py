@@ -6,7 +6,7 @@ from langchain.schema import Document
 from langchain_community.document_loaders import TextLoader, Docx2txtLoader, PDFPlumberLoader, BSHTMLLoader
 from logging import getLogger
 
-from src.config import Source
+from ingestor.config import Source
 from src.schema import ProcessedDocument
 
 logger = getLogger(__name__)

@@ -5,7 +5,7 @@ from langchain_openai.chat_models import ChatOpenAI
 from langchain_community.chat_models.huggingface import ChatHuggingFace
 from logging import getLogger
 
-from src.config import LLMConf
+from ingestor.config import LLMConf
 
 logger = getLogger(__name__)
 

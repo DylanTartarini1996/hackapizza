@@ -1,7 +1,7 @@
 import os
 from typing import List, Tuple
 
-from src.config import Source
+from ingestor.config import Source
 from src.ingestion.ingestor import Ingestor
 
 

@@ -5,7 +5,7 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain_ollama.embeddings import OllamaEmbeddings
 from langchain_openai.embeddings import OpenAIEmbeddings
 
-from src.config import EmbedderConf
+from ingestor.config import EmbedderConf
 from src.schema import ProcessedDocument
 
 logger = getLogger(__name__)
