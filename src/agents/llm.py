@@ -35,11 +35,13 @@ def fetch_llm(conf: LLMConf) -> BaseChatModel | None:
             temperature=conf.temperature,
         )
     elif conf.type == "ibm":
+        params= {"max_new_tokens": 1000}
         llm = WatsonxLLM(
             model_id=conf.model,
             url=conf.endpoint, 
             apikey=conf.api_key,
-            project_id=conf.deployment
+            project_id=conf.deployment,
+            params=params
         )
 
     else:

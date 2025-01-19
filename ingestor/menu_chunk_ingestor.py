@@ -1,13 +1,19 @@
 from pprint import pprint
-from typing import Optional
-
+from typing import List, Optional
+import os
+import uuid
 from pydantic import BaseModel
 
 from ingestor.base import BaseIngestor
 import re
 import fitz
+from ingestor.chunk import Chunk
 from ingestor.ingestion.cleaner import Cleaner
 from schemas.pydantic_schemas import OrderEnum
+
+def uuid_from_cat_name(name: str):
+    namespace = uuid.NAMESPACE_URL
+    return str(uuid.uuid5(namespace, name))
 
 
 class MenuChunk(BaseModel):
@@ -43,7 +49,7 @@ class PiattoChunkIngestor(BaseIngestor):
 
         return text_output
 
-    def run(self, pdf_path):
+    def run(self, pdf_path) -> List[MenuChunk]:
         html_output = self.extract_text_by_font_size(pdf_path, disc_font_size=12)
         html_content = "\n".join(html_output)
 
@@ -69,6 +75,26 @@ class PiattoChunkIngestor(BaseIngestor):
                 piatto_chunks.append(MenuChunk(name=name, description=description))
 
         return piatto_chunks
+
+
+    def chunk_from_docs(self, dir: str) -> List[Chunk]:
+        chunks = []
+        for file_path in os.listdir(dir):
+            if file_path.endswith(".pdf"):
+
+                filename = os.path.basename(file_path)
+                menu_piatti = self.run(pdf_path=os.path.join(dir,file_path))
+
+                for piatto in menu_piatti:
+                    chunk = Chunk(
+                        id=uuid_from_cat_name(name=piatto.name),
+                        filename=filename,
+                        text=piatto.description
+                    )
+
+                    chunks.append(chunk)
+
+        return chunks
 
 
 if __name__=="__main__":
