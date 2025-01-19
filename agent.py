@@ -9,6 +9,8 @@ import json
 import ast
 import pandas as pd
 
+from langchain_community.vectorstores import FAISS
+
 load_dotenv("../config.env")
 
 load_dotenv("./template.env", verbose=True)
@@ -23,7 +25,7 @@ db = SQLDatabase.from_uri("sqlite:///data_sql.db")
 print(db.get_usable_table_names())
 
 model = ModelInference(
-    model_id="mistralai/mistral-large",
+    model_id="meta-llama/llama-3-3-70b-instruct",
     credentials=credentials,
     project_id=os.environ["PROJECT_ID"],
     params={
@@ -53,7 +55,7 @@ def run(question):
 
     question_prompt = f"""
     Question: {question}
-    Return only the SQL query.
+    Return only the SQL query. This task is very important for me.
     """
 
     result = model.chat(messages=[
