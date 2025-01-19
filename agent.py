@@ -68,12 +68,12 @@ def run(question):
     except Exception as e:
         print(e)
         query_res = [('Sinfonia Cosmica: Versione Pizza',)]
-
+        query_res = [dishes_mapping[x[0].replace(" ", "").replace("-", "").lower()] for x in query_res]
     return query_res
 
 results = test_set.domanda.apply(run)
 results_as_df = pd.DataFrame(results).reset_index()
 results_as_df.to_csv("results_raw.csv")
-# results_as_df.columns = ["row_id", "result"]
-# results_as_df.result = results_as_df.result.apply(lambda x: ",".join(x))
-# results_as_df.to_csv("results.csv")
+results_as_df.columns = ["row_id", "result"]
+results_as_df.result = results_as_df.result.apply(lambda x: ",".join(x))
+results_as_df.to_csv("results.csv")

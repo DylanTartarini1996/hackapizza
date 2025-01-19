@@ -42,12 +42,17 @@ class MenuIngestor(BaseIngestor):
         restaurants = []
         restuarants_dst_dir = os.path.join(base_dir, 'output', 'restaurants')
         dishes_dst_dir = os.path.join(base_dir, 'output', 'dishes')
-
+        errors_file = os.path.join(base_dir, 'output', 'errors.txt')
         os.makedirs(restuarants_dst_dir, exist_ok=True)
         os.makedirs(dishes_dst_dir, exist_ok=True)
-        files_to_process = os.listdir(base_dir)
+        c
         print(f"{len(files_to_process)} files to process")
         for filename in files_to_process:
+            restaurant_out_file = os.path.join(restuarants_dst_dir, filename.replace('.pdf', '.json'))
+            dish_out_file = os.path.join(dishes_dst_dir, filename.replace('.pdf', '.json'))
+
+            if os.path.exists(restaurant_out_file) and os.path.exists(dish_out_file):
+                continue
             if filename.endswith(".pdf"):
                 print(filename)
                 pattern = r'(?=<h1>.*?</h1>)'
@@ -62,6 +67,7 @@ class MenuIngestor(BaseIngestor):
                 chunk_desc_ristorante = chunks[0]
                 chunks_piatti = []
                 ristorante_schema = RistoranteSchema(text=chunk_desc_ristorante)
+
                 ristorante_schema.fill_llm_generated(self.llm)
                 print(ristorante_schema.llm_generated)
                 piatti_schemas = []
@@ -77,14 +83,14 @@ class MenuIngestor(BaseIngestor):
                         piatti_schema.fill_llm_generated(self.llm)
                         piatti_schemas.append(piatti_schema)
 
+
+
                 #ristorante_schema.piatti = piatti_schemas
                 print(piatti_schemas)
-                out_file = os.path.join(restuarants_dst_dir, filename.replace('.pdf', '.json'))
-                print(f"saving {out_file}...")
-                with open(out_file, "w") as f:
+                print(f"saving {restaurant_out_file}...")
+                with open(restaurant_out_file, "w") as f:
                     json.dump(json.loads(ristorante_schema.model_dump_json(indent=2)), f, indent=2)
-                out_file = os.path.join(dishes_dst_dir, filename.replace('.pdf', '.json'))
-                with open(out_file, "w") as f:
+                with open(dish_out_file, "w") as f:
                     json.dump([json.loads(x.model_dump_json(indent=2)) for x in piatti_schemas], f, indent=2)
 
         return restaurants

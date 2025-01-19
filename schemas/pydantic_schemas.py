@@ -69,15 +69,15 @@ class PiattoLLMSchema(BaseModel):
     ingredients: list[str] = Field(description="Ingredients mentioned in the recipe")
     techniques: list[str] = Field(description="'Tecniche' mentioned in the recipe")
     #order: OrderEnum = Field(description="The 'Ordine' which apprec. Fill this field only if you are sure")
-    name: str = Field(description="Name of the recipe")
+    name: str = Field(description="Name of the recipe. Report it exactly as written in the document.")
 
     @field_validator("name")
     def validate(cls, value: Any) -> Self:
         with open("../HackapizzaDataset/Misc/dish_mapping.json", "r") as f:
             dishes = json.load(f)
         valid_dishes = list(dishes.keys())
-        valid_dishes = [x.lower() for x in valid_dishes]
-        assert value.lower() in valid_dishes
+        valid_dishes = [x.lower().replace('-', '').replace(' ', '') for x in valid_dishes]
+        assert value.lower().replace('-', '').replace(' ', '') in valid_dishes
 
         return value
 
@@ -90,13 +90,15 @@ class PiattoSchema(BaseModel):
         parser = PydanticOutputParser(pydantic_object=PiattoLLMSchema)
         prompt_template = """
         You are an expert in reading documents talking about a cuisine recipe.
-        Your task is to extract the required informations from the provided document, 
+        Your task is to parse extract the required informations from the provided recipe.  
+        Do not make up any information. 
         
         **INPUT**: A document
         
         **OUTPUT**: avoid the introductory and enclosing comments, return only a JSON. The output must respect the following JSON format: 
         {format_instructions}
         
+        Follow your task carefully.
         Document:{document} 
         """
         prompt = PromptTemplate(
@@ -111,13 +113,16 @@ class PiattoSchema(BaseModel):
     def fill_llm_generated(self, llm: LLM):
         parser = PydanticOutputParser(pydantic_object=PiattoLLMSchema)
         chain =  self.prompt | RunnableRetry(bound=RunnableParallel({"out":llm, "log": RunnableLambda(print)}), max_attempt_number=2) | RunnableLambda(filter) | parser
-        out = chain.invoke({"document": self.text})
-        self.llm_generated = out
+        try:
+            out = chain.invoke({"document": self.text})
+            self.llm_generated = out
+        except:
+            pass
 
 class RistoranteLLMSchema(BaseModel):
     name: str = Field(description="Name of the restaurants")
     chef: str = Field(description="Name of the chef")
-    location: LocationEnums = Field(description="Location of the restaurant")
+    location: LocationEnums = Field(description="Location of the restaurant. Do not include the 'Pianeta' word in the field, just enter one of the valid values")
     #piatti: list[PiattoSchema] = Field(description="List of recipes")
 
 class RistoranteSchema(BaseModel):
@@ -150,8 +155,11 @@ class RistoranteSchema(BaseModel):
     def fill_llm_generated(self, llm: LLM):
         parser = PydanticOutputParser(pydantic_object=RistoranteLLMSchema)
         chain = self.prompt | RunnableParallel({"out":llm, "log": RunnableLambda(print)}) | RunnableLambda(filter) | parser
-        out = chain.invoke({"document": self.text})
-        self.llm_generated = out
+        try:
+            out = chain.invoke({"document": self.text})
+            self.llm_generated = out
+        except:
+            pass
 
 if __name__ == "__main__":
     piatto = PiattoSchema(text="""
