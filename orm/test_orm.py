@@ -24,7 +24,14 @@ class Restaurant(Base):
     name: Mapped[str] = mapped_column(String(30))
     chef: Mapped[str] = mapped_column(String(30))
     location: Mapped[str] = mapped_column(String(30))
+    #licenses: Mapped[List["Licenses"]] = relationship()
     dishes: Mapped[List["Dishes"]] = relationship()
+
+# class Licenses(Base):
+#     id: Mapped[int] = mapped_column(primary_key=True)
+#     name: Mapped[str] = mapped_column(String(30))
+#     description: Mapped[str] = mapped_column(String(30))
+#     restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurant.id"))
 
 class Ingredient(Base):
     __tablename__ = "ingredient"
