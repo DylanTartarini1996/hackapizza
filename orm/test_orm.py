@@ -1,10 +1,11 @@
 from typing import Optional, List
 from sqlalchemy import ForeignKey
-from sqlalchemy import String
+from sqlalchemy import String, text, Column, Integer
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+import pandas as pd
 import json
 
 class Base(DeclarativeBase):
@@ -45,6 +46,14 @@ class Technique(Base):
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
     name: Mapped[str] = mapped_column(String(30))
 
+
+class LocationDistances(Base):
+    __tablename__ = "location_distances"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    _from: Mapped[str] = mapped_column(ForeignKey("restaurant.location"))
+    _to: Mapped[str] = mapped_column(ForeignKey("restaurant.location"))
+    distance: Mapped[int] = Column(Integer)
+
 from sqlalchemy import create_engine
 engine = create_engine("sqlite:///../data_sql.db", echo=True)
 
@@ -68,12 +77,24 @@ with Session(engine) as session:
                 dishes_data_raw = json.load(f)
                 dishes_data = [x["llm_generated"] for x in dishes_data_raw]
 
-            restaurant_objs.append(Restaurant(name=restaurant_data["name"],
-                                              chef=restaurant_data["chef"],
-                                              location=restaurant_data["location"],
-                                              dishes=[Dishes(name=x["name"],
-                                                             ingredients=[Ingredient(name=ing) for ing in x["ingredients"]],
-                                                             techniques=[Technique(name=tec) for tec in x["techniques"]]) for x in dishes_data if x is not None]))
+            if restaurant_data:
+                restaurant_objs.append(Restaurant(name=restaurant_data["name"],
+                                                  chef=restaurant_data["chef"],
+                                                  location=restaurant_data["location"],
+                                                  dishes=[Dishes(name=x["name"],
+                                                                 ingredients=[Ingredient(name=ing) for ing in x["ingredients"]],
+                                                                 techniques=[Technique(name=tec) for tec in x["techniques"]]) for x in dishes_data if x is not None]))
 
     session.add_all(restaurant_objs)
+    session.commit()
+
+# ingest location distances
+with Session(engine) as session:
+
+    df = pd.read_csv("../ingestor/distanze_transformed.csv")
+    df_records = df.to_dict(orient="records")
+
+    location_distances = [LocationDistances(_from=x["From"], _to=x["To"], distance=x["Distance"]) for x in df_records]
+    #
+    session.add_all(location_distances)
     session.commit()
