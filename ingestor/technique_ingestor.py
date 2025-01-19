@@ -1,14 +1,21 @@
 from pprint import pprint
-
+from typing import List
+import uuid
+import os
 import unicodedata
 
 from ingestor.base import BaseIngestor
 import re
 import fitz
 from ingestor.ingestion.cleaner import Cleaner
+from ingestor.chunk import Chunk
 
 from schemas.pydantic_schemas import OrderEnum, Order, TechniqueSubCategory, Technique, MacroTechnique
 from src.models.manuals import LicenseCategory, LicenseLevel
+
+def uuid_from_cat_name(name: str):
+    namespace = uuid.NAMESPACE_URL
+    return str(uuid.uuid5(namespace, name))
 
 
 class TechniqueIngestor(BaseIngestor):
@@ -116,9 +123,8 @@ class TechniqueIngestor(BaseIngestor):
         return MacroTechnique(name=name, description=description)
 
 
-    def run(self, pdf_path):
+    def run(self, pdf_path) -> List[MacroTechnique]:
         pattern = r'(?=<h1>.*?</h1>)'
-
 
         html_output = self.extract_text_by_font_size(pdf_path)
         html_content = "\n".join(html_output)
@@ -156,6 +162,45 @@ class TechniqueIngestor(BaseIngestor):
             macro_techniques.append(macro_tech)
 
         return macro_techniques
+    
+
+    def chunks_from_doc(self, file_path: str) -> List[Chunk]:
+        chunks = []
+
+        macro_techniques = self.run(file_path)
+
+        filename = os.path.basename(file_path)
+
+        for mt in macro_techniques:
+
+            chunk = Chunk(
+                id=uuid_from_cat_name(mt.name),
+                filename=filename,
+                text=mt.name+"\n"+mt.description
+            )
+
+            chunks.append(chunk)
+
+            for t in mt.techniques:
+
+                _chunk = Chunk(
+                    id=uuid_from_cat_name(t.category),
+                    filename=filename,
+                    text=t.category+"\n"+t.description
+                )
+
+                chunks.append(_chunk)
+
+                for st in t.sub_categories:
+                    __chunk = Chunk(
+                        id=uuid_from_cat_name(st.name),
+                        filename=filename,
+                        text=st.name+"\n"+st.how_it_works+"\n PROS: "+st.pros+"\n CONS: "+st.cons
+                    )
+
+                    chunks.append(__chunk)
+        
+        return chunks
 
 
 if __name__=="__main__":
