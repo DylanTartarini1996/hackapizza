@@ -1,14 +1,23 @@
 from pprint import pprint
 
+from typing import List
 import unicodedata
+import uuid
+import os
 
 from ingestor.base import BaseIngestor
 import re
 import fitz
 from ingestor.ingestion.cleaner import Cleaner
+from ingestor.chunk import Chunk
 
 from schemas.pydantic_schemas import OrderEnum, Order
 from src.models.manuals import LicenseCategory, LicenseLevel
+
+
+def uuid_from_filename(filename, chunk_id: int):
+    namespace = uuid.NAMESPACE_URL
+    return str(uuid.uuid5(namespace, filename+"chunk_"+str(chunk_id)))
 
 
 class LicenceIngestor(BaseIngestor):
@@ -79,7 +88,6 @@ class LicenceIngestor(BaseIngestor):
     def run(self, pdf_path):
         pattern = r'(?=<h1>.*?</h1>)'
 
-
         html_output = self.extract_text_by_font_size(pdf_path)
         html_content = "\n".join(html_output)
 
@@ -93,15 +101,42 @@ class LicenceIngestor(BaseIngestor):
 
         capitolo_1_clean_chunks = [chunk.strip() for chunk in capitolo_1_chunks if chunk.strip()]
 
-        category_chunks = []
-
         licences = []
         for chunk in capitolo_1_clean_chunks:
             if chunk.startswith("<h3"):
                 licences.append(self.parse_category_chunk(chunk))
         return licences
+    
 
+    def chunks_from_doc(self, file_path: str) -> List[Chunk]:
+        pattern = r'(?=<h1>.*?</h1>)'
 
+        html_output = self.extract_text_by_font_size(file_path)
+        html_content = "\n".join(html_output)
+
+        chunks = re.split(pattern, html_content)
+        chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
+
+        capitolo_1 = self.cleaner._clean_text(self.clean_corrupted_text(chunks[1]))
+
+        pattern = r'(?=<h3>.*?</h3>)'
+        capitolo_1_chunks = re.split(pattern, capitolo_1)
+
+        capitolo_1_clean_chunks = [chunk.strip() for chunk in capitolo_1_chunks if chunk.strip()]
+        
+        filename = os.path.basename(file_path)
+        final_chunks = []
+
+        for i, c in enumerate(capitolo_1_clean_chunks):
+
+            chunk = Chunk(
+                id=uuid_from_filename(filename=filename, chunk_id=i),
+                filename=filename, 
+                text=c
+            )
+            final_chunks.append(chunk)
+
+        return final_chunks
 
 if __name__=="__main__":
     ingestor = LicenceIngestor()
