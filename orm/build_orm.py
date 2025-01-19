@@ -1,6 +1,6 @@
 from typing import Optional, List
-from sqlalchemy import ForeignKey
-from sqlalchemy import String, text, Column, Integer
+from sqlalchemy import ForeignKey, Table
+from sqlalchemy import String, text, Column, Integer, Boolean
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -25,14 +25,36 @@ class Restaurant(Base):
     name: Mapped[str] = mapped_column(String(30))
     chef: Mapped[str] = mapped_column(String(30))
     location: Mapped[str] = mapped_column(String(30))
-    #licenses: Mapped[List["Licenses"]] = relationship()
+    licenses: Mapped[List["License"]|None] = relationship()
     dishes: Mapped[List["Dishes"]] = relationship()
 
-# class Licenses(Base):
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     name: Mapped[str] = mapped_column(String(30))
-#     description: Mapped[str] = mapped_column(String(30))
-#     restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurant.id"))
+
+class AllowedTechniques(Base):
+    __tablename__ = 'allowed_techniques'
+
+    license_id = Column(Integer, ForeignKey('license.id'), primary_key=True)
+    technique_id = Column(Integer, ForeignKey('technique.id'), primary_key=True)
+
+    # Extra columns
+    allowed = Column(Boolean, default=True)
+    # Reference back to parent tables
+    license = relationship("License", back_populates="allowed_licenses")
+    technique = relationship("Technique", back_populates="allowed_techniques")
+
+class Technique(Base):
+    __tablename__ = "technique"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
+    name: Mapped[str] = mapped_column(String(30))
+    allowed_techniques = relationship("AllowedTechniques", back_populates="technique")
+class License(Base):
+    __tablename__ = "license"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(30))
+    level: Mapped[int] = mapped_column(Integer)
+    restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurant.id"))
+    allowed_licenses = relationship("AllowedTechniques", back_populates="license")
+
 
 class Ingredient(Base):
     __tablename__ = "ingredient"
@@ -40,11 +62,14 @@ class Ingredient(Base):
     dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
     name: Mapped[str] = mapped_column(String(30))
 
-class Technique(Base):
-    __tablename__ = "technique"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    dish_id: Mapped[int] = mapped_column(ForeignKey("dishes.id"))
-    name: Mapped[str] = mapped_column(String(30))
+
+
+# class LicenseAllowed(Base):
+#     __tablename__ = "license_allowed"
+#     id: Mapped[int] = mapped_column(primary_key=True)
+#     license_id: Mapped[id] = mapped_column(ForeignKey("license.id"))
+#     technique_id: Mapped[id] = mapped_column(ForeignKey("technique.id"))
+#     allowed: Mapped[bool | None] = Column(Boolean)
 
 
 class LocationDistances(Base):
@@ -52,10 +77,10 @@ class LocationDistances(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     _from: Mapped[str] = mapped_column(ForeignKey("restaurant.location"))
     _to: Mapped[str] = mapped_column(ForeignKey("restaurant.location"))
-    distance: Mapped[int] = Column(Integer)
+    distance: Mapped[int] = mapped_column(Integer)
 
 from sqlalchemy import create_engine
-engine = create_engine("sqlite:///../data_sql.db", echo=True)
+engine = create_engine("sqlite:///../data_sql_2.db", echo=True)
 
 Base.metadata.create_all(engine)
 
@@ -64,6 +89,18 @@ from sqlalchemy.orm import Session
 
 restaurant_json_dir = '../HackapizzaDataset/Menu/output/restaurants'
 dishes_json_dir = '../HackapizzaDataset/Menu/output/dishes'
+license_level_mapping = {
+    'I': 1,
+    'II': 2,
+    'III': 3,
+    'IV': 4,
+    'V': 5,
+    'VI': 6,
+    'VII': 7,
+    'UNKNOWN': -1
+}
+with open('../notebooks/restaurant_licence_classification.json', 'r') as f:
+    restaurant_licenses = json.load(f)
 
 with Session(engine) as session:
     restaurants_to_process = os.listdir(restaurant_json_dir)
@@ -81,6 +118,7 @@ with Session(engine) as session:
                 restaurant_objs.append(Restaurant(name=restaurant_data["name"],
                                                   chef=restaurant_data["chef"],
                                                   location=restaurant_data["location"],
+                                                  licenses=[License(name=x["licence_type"], level=license_level_mapping.get(x["licence_level"], x["licence_level"])) for x in restaurant_licenses[0].get(restaurant_data["name"], [])],
                                                   dishes=[Dishes(name=x["name"],
                                                                  ingredients=[Ingredient(name=ing) for ing in x["ingredients"]],
                                                                  techniques=[Technique(name=tec) for tec in x["techniques"]]) for x in dishes_data if x is not None]))
@@ -98,3 +136,23 @@ with Session(engine) as session:
     #
     session.add_all(location_distances)
     session.commit()
+
+with Session(engine) as session:
+    with open('../notebooks/output_flag.json', 'r') as f:
+        technique_limits_json = json.load(f)
+    technique_limits_json = [json.loads(x) for x in technique_limits_json]
+    print(technique_limits_json)
+    for tech_lim in technique_limits_json:
+        licenses_id = []
+        for limit in tech_lim["limits"]["licence_list"]:
+            print(limit)
+
+            license_id = session.execute(text(f"SELECT id FROM license WHERE name='{limit["licence_type"]}' AND level<'{license_level_mapping.get(limit["level"], limit["level"])}'")).fetchone()
+            if license_id:
+                licenses_id.append(license_id[0])
+        technique_id = session.execute(text(f"SELECT id FROM technique WHERE name='{tech_lim["name"].replace("'", "''")}'")).fetchone()
+        if technique_id:
+            technique_id = technique_id[0]
+
+            for license in licenses_id:
+                technique_objs = [AllowedTechniques(allowed=False, license_id=license, technique_id=technique_id) for x in technique_limits_json]

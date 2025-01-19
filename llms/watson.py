@@ -1,21 +1,22 @@
 from dotenv import load_dotenv
-from langchain_ibm import WatsonxLLM
+from ibm_watsonx_ai import Credentials
+from ibm_watsonx_ai.foundation_models import ModelInference
 import os
 
-load_dotenv("../template.env")
+load_dotenv("../config.env")
 
+credentials = Credentials(
+    url=os.environ["ENDPOINT"],
+    api_key=os.environ["WATSONX_APIKEY"]
+)
 parameters = {
-    "decoding_method": "sample",
-    "max_new_tokens": 100,
-    "min_new_tokens": 1,
     "temperature": 0.5,
-    "top_k": 50,
     "top_p": 1,
 }
 
-llm = WatsonxLLM(
-        model_id="meta-llama/llama-3-3-70b-instruct",
-        url="https://us-south.ml.cloud.ibm.com",
-        project_id="953436b9-d6f8-4c6c-a62e-389fc4c9b018",
-        params=parameters,
-    )
+llm = ModelInference(
+    model_id="meta-llama/llama-3-3-70b-instruct", #codellama/codellama-34b-instruct-hf
+    credentials=credentials,
+    project_id=os.environ["PROJECT_ID"],
+    params=parameters
+)
