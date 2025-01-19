@@ -44,7 +44,9 @@ def run(question):
     You are provided with the data model of a DB. You should write a SQL Query to answer the given question.
     Your query must be based only on the provided data model.
     
-    When writing WHERE clauses, always use the LOWER function to make the query case-insensitive.
+    When writing WHERE clauses, always use the LOWER function to make the query case-insensitive and use LOWER LIKE '%value%' statement.
+    
+    Example: SELECT * FROM ingredient WHERE LOWER(name) LIKE '%ravioli al vaporeon%'
     
     Data Model: {db.get_context()} 
     """
@@ -61,7 +63,9 @@ def run(question):
 
     result = result.replace("```sql", "").replace("```", "")
     try:
+        print(result)
         query_res = db.run(result)
+        print(query_res)
         query_res = ast.literal_eval(query_res)
         query_res = [dishes_mapping[x[0].replace(" ", "").replace("-", "").lower()] for x in query_res]
 
@@ -69,11 +73,27 @@ def run(question):
         print(e)
         query_res = [('Sinfonia Cosmica: Versione Pizza',)]
         query_res = [dishes_mapping[x[0].replace(" ", "").replace("-", "").lower()] for x in query_res]
+
     return query_res
 
 results = test_set.domanda.apply(run)
 results_as_df = pd.DataFrame(results).reset_index()
 results_as_df.to_csv("results_raw.csv")
 results_as_df.columns = ["row_id", "result"]
-results_as_df.result = results_as_df.result.apply(lambda x: ",".join(x))
+
+def remap(x):
+    x = ast.literal_eval(x)
+
+    x = [str(k) for k in x]
+    print(type(x[0]))
+    try:
+        return ",".join(x)
+    except Exception as e:
+        print(x)
+        print(e)
+        raise Exception()
+
+
+results_as_df.result = results_as_df.result.apply(remap)
+results_as_df.row_id = results_as_df.row_id.apply(lambda x: x+1)
 results_as_df.to_csv("results.csv")
