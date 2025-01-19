@@ -47,9 +47,14 @@ class MenuIngestor(BaseIngestor):
 
     def run(self, base_dir):
         restaurants = []
-        dst_dir = os.path.join(base_dir, 'output')
-        os.makedirs(dst_dir, exist_ok=True)
-        for filename in os.listdir(base_dir):
+        restuarants_dst_dir = os.path.join(base_dir, 'output', 'restaurants')
+        dishes_dst_dir = os.path.join(base_dir, 'output', 'dishes')
+
+        os.makedirs(restuarants_dst_dir, exist_ok=True)
+        os.makedirs(dishes_dst_dir, exist_ok=True)
+        files_to_process = os.listdir(base_dir)
+        print(f"{len(files_to_process)} files to process")
+        for filename in files_to_process:
             if filename.endswith(".pdf"):
                 print(filename)
                 pattern = r'(?=<h1>.*?</h1>)'
@@ -67,25 +72,28 @@ class MenuIngestor(BaseIngestor):
                 ristorante_schema.fill_llm_generated(self.llm)
                 print(ristorante_schema.llm_generated)
                 piatti_schemas = []
-                for it, chunk in enumerate(chunks[1:]):
+                for iter, chunk in enumerate(chunks[1:]):
                     if chunk.startswith("<h1>Menu</h1>"):
                         pass
                     elif chunk.startswith("<h1>Legenda Ordini"):
                         pass
                     else:
-                        print(f"processing {it} chunk")
+                        print(f"processing {iter} chunk")
 
                         piatti_schema = PiattoSchema(text=chunk)
                         piatti_schema.fill_llm_generated(self.llm)
                         piatti_schemas.append(piatti_schema)
-                        break
 
-                ristorante_schema.piatti = piatti_schemas
-                out_file = os.path.join(dst_dir, filename.replace('.pdf', '.json'))
+                #ristorante_schema.piatti = piatti_schemas
+                print(piatti_schemas)
+                out_file = os.path.join(restuarants_dst_dir, filename.replace('.pdf', '.json'))
                 print(f"saving {out_file}...")
                 with open(out_file, "w") as f:
-                    json.dump(json.loads(ristorante_schema.model_dump_json(exclude=["text"], indent=2)), f, indent=2)
-            break
+                    json.dump(json.loads(ristorante_schema.model_dump_json(indent=2)), f, indent=2)
+                out_file = os.path.join(dishes_dst_dir, filename.replace('.pdf', '.json'))
+                with open(out_file, "w") as f:
+                    json.dump([json.loads(x.model_dump_json(indent=2)) for x in piatti_schemas], f, indent=2)
+
         return restaurants
     
 
@@ -119,7 +127,7 @@ class MenuIngestor(BaseIngestor):
     
 
 if __name__=="__main__":
-    from llms.watson import llm
+    from llms.ollama import llm
     from dotenv import load_dotenv
 
     load_dotenv("../config.env")
