@@ -105,6 +105,8 @@ class MenuIngestor(BaseIngestor):
                 
 
                 for i, text in enumerate(chunks):
+                    if text.startswith("<h1>Legenda Ordini"):
+                        pass
                     fin_chunk = Chunk(
                         id=uuid_from_filename(filename, i),
                         filename=filename,
